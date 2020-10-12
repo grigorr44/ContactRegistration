@@ -12,95 +12,96 @@ import ContactsUI
 
 class ViewController: UIViewController, CNContactViewControllerDelegate {
 
-    @IBOutlet weak var firstTxf: UITextField!
-    @IBOutlet weak var secondTxf: UITextField!
-    @IBOutlet weak var lblSuccessCount: UILabel!
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        
-        
-        
-        
-        // Do any additional setup after loading the view.
-    }
+    // MARK: - Interface Builder Outlets
+    
+    @IBOutlet private weak var firstTxf: UITextField!
+    @IBOutlet private weak var secondTxf: UITextField!
+    @IBOutlet private weak var lblSuccessCount: UILabel!
 
-    var store = CNContactStore()
-    var saveRequest = CNSaveRequest()
+    // MARK: - Properties
     
-    private func registerContact(number: String) {
-        let contact = CNMutableContact()
-        // Name
-        contact.givenName = "\(number)"
-        
-        // Phone
-        contact.phoneNumbers.append(CNLabeledValue(
-            label: "GG", value: CNPhoneNumber(stringValue: number)))
-        
-        // Save
-        saveRequest.add(contact, toContainerWithIdentifier: nil)
-    }
+    private var store = CNContactStore()
+    private var saveRequest = CNSaveRequest()
     
-    private func removeContact(number: String) {
-
-        let predicate = CNContact.predicateForContacts(matching: CNPhoneNumber(stringValue: number))
-        
-        let keys = [CNContactPhoneNumbersKey as CNKeyDescriptor]
-        
-//        let slectedNumber = CNLabeledValue(label: "GG", value: CNPhoneNumber(stringValue: number))
-        
-        if let contactsList = try? store.unifiedContacts(matching: predicate, keysToFetch: keys) {
-            print(contactsList)
-            for contact in contactsList {
-                let mutableContact = contact.mutableCopy() as! CNMutableContact
-                saveRequest.delete(mutableContact)
-                try? store.execute(saveRequest)
-            }
-        }
-    }
+    // MARK: - Interface Builder Actions
     
-    @IBAction func registerButtonMethod(_ sender: Any) {
-        guard let firstNumber = firstTxf.text else { return }
-        guard let lastNumber = secondTxf.text else { return }
-        
+    @IBAction private func registerButtonMethod(_ sender: Any) {
+        guard let firstNumber = firstTxf.text,
+            let countText = secondTxf.text,
+            let count = Int(countText),
+            count > 0 else { return }
         store = CNContactStore()
         saveRequest = CNSaveRequest()
-        
-        let count = (Int(lastNumber) ?? 0) - (Int(firstNumber) ?? 0)
-        
-        for index in 0...count {
+        for index in 0 ..< count {
             let needRegNumber = (Int(firstNumber) ?? 0) + index
             print(needRegNumber)
             lblSuccessCount.text = "\(index + 1)"
-            
             registerContact(number: "+\(needRegNumber)")
         }
-        
-        try? store.execute(saveRequest)
+        exequte(saveRequest)
     }
     
-    
-    @IBAction func removeContactsAction(_ sender: Any) {
-        guard let firstNumber = firstTxf.text else { return }
-        guard let lastNumber = secondTxf.text else { return }
-        
-//        store = CNContactStore()
-//        saveRequest = CNSaveRequest()
-        
-        let count = (Int(lastNumber) ?? 0) - (Int(firstNumber) ?? 0)
-        
-        for index in 0...count {
+    @IBAction private func removeContactsAction(_ sender: Any) {
+        guard let firstNumber = firstTxf.text,
+            let countText = secondTxf.text,
+            let count = Int(countText),
+            count > 0 else { return }
+        for index in 0 ..< count {
             store = CNContactStore()
             saveRequest = CNSaveRequest()
             let needRegNumber = (Int(firstNumber) ?? 0) + index
             print(needRegNumber)
             lblSuccessCount.text = "\(index + 1)"
-            
             removeContact(number: "+\(needRegNumber)")
         }
-        
-        
     }
     
+    @IBAction private func removeAllaction(_ sender: UIButton) {
+        let keys = [CNContactPhoneNumbersKey]
+        let containerID = store.defaultContainerIdentifier()
+        let predicate = CNContact.predicateForContactsInContainer(withIdentifier: containerID)
+        var contacts = [CNContact]()
+        do {
+            try contacts = store.unifiedContacts(matching: predicate, keysToFetch: keys as [CNKeyDescriptor])
+        } catch {
+            print(error, "---")
+        }
+        for contact in contacts {
+            if let mutableCopy = contact.mutableCopy() as? CNMutableContact {
+                saveRequest.delete(mutableCopy)
+            }
+        }
+        exequte(saveRequest)
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func registerContact(number: String) {
+        let contact = CNMutableContact()
+        contact.givenName = "\(number)"
+        contact.phoneNumbers.append(CNLabeledValue(label: "GG", value: CNPhoneNumber(stringValue: number)))
+        saveRequest.add(contact, toContainerWithIdentifier: nil)
+    }
+    
+    private func removeContact(number: String) {
+        let predicate = CNContact.predicateForContacts(matching: CNPhoneNumber(stringValue: number))
+        let keys = [CNContactPhoneNumbersKey as CNKeyDescriptor]
+        if let contactsList = try? store.unifiedContacts(matching: predicate, keysToFetch: keys) {
+            print(contactsList)
+            for contact in contactsList {
+                let mutableContact = contact.mutableCopy() as! CNMutableContact
+                saveRequest.delete(mutableContact)
+                exequte(saveRequest)
+            }
+        }
+    }
+    
+    private func exequte(_ saveRequest: CNSaveRequest) {
+        do {
+            try self.store.execute(self.saveRequest)
+        } catch {
+            print(error, "---")
+        }
+    }
 }
 
